@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>선생님 말투 변환기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#fbf7f2; --card:#ffffff; --ink:#2b2622; --sub:#8a7f75; --line:#ece4da;
+    --accent:#e8846b; --accent-soft:#fdeee8; --chip:#f5efe8; --ok:#5a9e7c;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans KR",system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1040px;margin:0 auto;padding:28px 18px 60px}
+  header h1{font-family:"Gowun Dodum",sans-serif;font-size:30px;margin:0 0 6px;letter-spacing:-0.5px}
+  header h1 span{color:var(--accent)}
+  header p{margin:0 0 22px;color:var(--sub);font-size:14px;line-height:1.6}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  @media (max-width:820px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  label.t{display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin:16px 0 8px;color:#4a423b}
+  label.t:first-child{margin-top:0}
+  label.t small{font-weight:400;color:var(--sub)}
+  input,textarea{width:100%;border:1px solid var(--line);background:#fffdfb;border-radius:12px;padding:12px 13px;font:inherit;font-size:15px;color:var(--ink);outline:none;transition:border .15s}
+  input:focus,textarea:focus{border-color:var(--accent)}
+  textarea{resize:vertical;min-height:84px;line-height:1.55}
+  .chips{display:flex;flex-wrap:wrap;gap:7px}
+  .chip{border:1px solid var(--line);background:var(--chip);color:#5a5048;border-radius:999px;padding:7px 13px;font-size:13px;cursor:pointer;font-family:inherit}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  .tones{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;background:var(--chip);padding:5px;border-radius:14px}
+  .tone{border:0;background:transparent;border-radius:10px;padding:10px 4px;cursor:pointer;font-family:inherit;color:#7b7067}
+  .tone b{display:block;font-size:14px}
+  .tone small{font-size:11px}
+  .tone.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+  .sliders{display:flex;flex-direction:column;gap:14px;background:var(--chip);border-radius:14px;padding:14px 14px 10px}
+  .sl-top{display:flex;justify-content:space-between;align-items:baseline;font-size:14px;font-weight:700}
+  .sl-top .lv{color:var(--accent);font-size:13px}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;padding:0;border:0;border-radius:99px;margin:10px 0 4px;background:linear-gradient(to right,var(--accent) var(--p,50%),#e3d9ce var(--p,50%))}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.15);cursor:grab}
+  input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--accent);cursor:grab}
+  .ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--sub);padding:0 4px}
+  .ticks span{width:16px;text-align:center}
+  .ticks span.on{color:var(--accent);font-weight:700}
+  .sl-desc{font-size:12px;color:#6b6058;margin-top:4px;min-height:17px}
+  #absWrap{border-left:3px solid var(--accent-soft);padding-left:10px}
+  #abs .chip{font-size:12px;padding:5px 11px;background:#fff}
+  #abs .chip.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+  .draft-row{display:flex;gap:8px;align-items:stretch}
+  .draft-row textarea{flex:1}
+  .send{flex:0 0 64px;border:0;border-radius:14px;background:var(--accent);color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-family:inherit;font-size:12px;font-weight:700}
+  .send:disabled{opacity:.5;cursor:default}
+  .go{margin-top:18px;width:100%;border:0;background:var(--ink);color:#fff;border-radius:14px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  .go:disabled{opacity:.5;cursor:default}
+  .out{min-height:300px;display:flex;flex-direction:column}
+  .out-head{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--sub);margin-bottom:12px}
+  .badge{border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:12px;background:var(--accent-soft);color:var(--accent);font-weight:700}
+  .result{flex:1;white-space:pre-wrap;line-height:1.8;font-size:15px;min-height:200px;border:1px dashed var(--line);border-radius:14px;padding:16px;background:#fffdfb}
+  .result.empty{color:#b8ada2;display:flex;align-items:center;justify-content:center;text-align:center;font-size:14px}
+  .acts{display:flex;gap:8px;margin-top:12px}
+  .btn{flex:1;border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px;font-size:14px;cursor:pointer;font-family:inherit;color:var(--ink);font-weight:500}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+  .btn:disabled{opacity:.45;cursor:default}
+  .notes{margin:14px 2px 0;padding-left:18px;color:var(--sub);font-size:12px;line-height:1.7}
+  .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .err{color:#c0503a;font-size:13px;margin-top:10px;display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>선생님 말투 <span>변환기</span></h1>
+    <p>대충 쓴 내용을 넣으면 다정하고 공감 잘하는 선생님 메시지로 바꿔 드려요. 내용은 그대로, 말투만 바꿔요.</p>
+  </header>
+
+  <div class="grid">
+    <section class="card">
+      <div class="row2">
+        <div>
+          <label class="t">보내는 사람 <small>선택</small></label>
+          <input id="sign" placeholder="예: 3학년 3반 담임">
+        </div>
+        <div>
+          <label class="t">학생 이름 <small>선택</small></label>
+          <input id="student" placeholder="예: 민준">
+        </div>
+      </div>
+
+      <label class="t">받는 사람</label>
+      <div class="chips" id="to">
+        <button class="chip on" data-v="어머니">아이 어머니</button>
+        <button class="chip" data-v="아버지">아이 아버지</button>
+        <button class="chip" data-v="학생">학생</button>
+        <button class="chip" data-v="반 전체 학생">반 전체</button>
+        <button class="chip" data-v="동료 선생님">동료 선생님</button>
+      </div>
+
+      <label class="t">상황</label>
+      <div class="chips" id="kind">
+        <button class="chip on" data-v="결석·지각·조퇴">결석/지각</button>
+        <button class="chip" data-v="생활지도·문제 행동">생활지도</button>
+        <button class="chip" data-v="상담 요청·민원 답변">상담/민원</button>
+        <button class="chip" data-v="안내 (과제, 행사, 칭찬, 부탁 등)">안내</button>
+      </div>
+      <div id="absWrap" style="margin-top:10px">
+        <div class="chips" id="abs">
+          <button class="chip on" data-v="">기타</button>
+          <button class="chip" data-v="질병결석">질병결석</button>
+          <button class="chip" data-v="생리결석">생리결석</button>
+        </div>
+      </div>
+
+      <label class="t">말끝</label>
+      <div class="tones" id="formal">
+        <button class="tone" data-v="1"><b>반말</b><small>~하자, ~했니?</small></button>
+        <button class="tone on" data-v="2"><b>~해요</b><small>기본</small></button>
+        <button class="tone" data-v="3"><b>섞어서</b><small>해요+습니다</small></button>
+        <button class="tone" data-v="4"><b>~습니다</b><small>격식</small></button>
+      </div>
+
+      <label class="t">톤 <small>바를 드래그해서 정도를 골라요</small></label>
+      <div class="sliders" id="sliders"></div>
+
+      <label class="t">받은 메시지 <small>있으면 붙여넣기</small></label>
+      <textarea id="recv"></textarea>
+
+      <label class="t">내가 하고 싶은 말 <small>대충 써도 돼요</small></label>
+      <div class="draft-row">
+        <textarea id="draft"></textarea>
+        <button class="send" id="go" aria-label="좋은 말투로 바꾸기">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"/><path d="M5 12l7-7 7 7"/></svg>
+          <span>바꾸기</span>
+        </button>
+      </div>
+      <div class="err" id="err"></div>
+      <div id="pwWrap" style="display:none;margin-top:10px">
+        <div class="draft-row">
+          <input id="pw" type="password" placeholder="사용 비밀번호">
+          <button class="send" id="pwSave" style="flex-basis:64px"><span>확인</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card out">
+      <div class="out-head"><span id="meta">결과</span><span class="badge" id="toneBadge"></span></div>
+      <div class="result empty" id="result">하고 싶은 말을 대충 써 넣고<br>버튼을 눌러 보세요</div>
+      <div class="acts">
+        <button class="btn primary" id="copy" disabled>복사하기</button>
+        <button class="btn" id="again" disabled>다른 버전으로</button>
+      </div>
+      <ul class="notes">
+        <li>날짜·시간·약속처럼 내가 쓰지 않은 내용은 넣지 않아요. 필요하면 내 답변에 적어 주세요.</li>
+        <li>보내기 전에 이름과 날짜는 한 번 더 확인해 주세요.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+<div class="toast" id="toast">복사됐어요!</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let busy = false, lastText = "", ctrl = null;
+
+// 선택 버튼 그룹
+function group(id){
+  const box = $(id);
+  box.addEventListener("click", e => {
+    const b = e.target.closest("button"); if(!b) return;
+    box.querySelectorAll("button").forEach(x => x.classList.remove("on"));
+    b.classList.add("on");
+  });
+  return () => box.querySelector(".on").dataset.v;
+}
+const getTo = group("to"), getKind = group("kind"), getFormal = group("formal");
+const getAbs = group("abs");
+function showAbs(){ $("absWrap").style.display = getKind().startsWith("결석") ? "" : "none"; }
+$("kind").addEventListener("click", () => setTimeout(showAbs));
+showAbs();
+const ABS_GUIDE = {
+  "질병결석": `질병결석이다. 교사가 평소 보내는 느낌의 예: "확인했습니다~ 병원 꼭 다녀오게 해주세요~ 푹 쉬고 내일 보겠습니다~" 예 문장을 그대로 쓰지 말고, 같은 내용(확인, 병원 다녀오게 해 달라는 부탁, 푹 쉬고 내일 보자)과 같은 온도로 표현과 어순을 매번 다르게 바꿔 쓴다.`,
+  "생리결석": `생리결석이다. 교사가 평소 보내는 느낌의 예: "네, 확인했습니다~ 서류는 내일 드릴게요. 푹 쉬고 내일 보겠습니다~!" 예 문장을 그대로 쓰지 말고, 같은 내용(확인, 서류는 내일 준다, 푹 쉬고 내일 보자)과 같은 온도로 표현과 어순을 매번 다르게 바꿔 쓴다. 생리라는 단어는 다시 언급하지 않는다.`
+};
+// 받는 사람에 따라 말끝 기본값 자동 설정
+const DEFAULT_FORMAL = { "어머니":"3", "아버지":"3", "동료 선생님":"3", "학생":"2", "반 전체 학생":"2" };
+function applyDefaultFormal(){
+  const v = DEFAULT_FORMAL[getTo()]; if(!v) return;
+  $("formal").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+  badge();
+}
+$("to").addEventListener("click", e => { if(e.target.closest("button")) applyDefaultFormal(); });
+const FORMAL = {
+  1: { name:"반말", rule:"" },
+  2: { name:"~해요", rule:"해요체로 쓴다. 과한 존칭(~하셨을까요, ~해 주시면 감사하겠습니다)은 쓰지 않는다." },
+  3: { name:"섞어서", rule:"해요체를 기본으로 하고 습니다체를 한두 문장 섞는다." },
+  4: { name:"~습니다", rule:"습니다체로 쓴다. 그래도 공문처럼 딱딱하지 않게." }
+};
+$("formal").addEventListener("click", () => setTimeout(badge));
+
+// 톤 슬라이더 (1~5)
+const SL = [
+  { key:"warm", name:"공감·다정함", def:3, levels:[
+    "용건만, 건조하게",
+    "담백하게, 말끝만 부드럽게",
+    "기준 (선생님 예시 느낌)",
+    "조금 더 다정하게",
+    "아주 다정하게, 이모티콘도" ],
+    rule:[
+      "공감·위로 표현 없이 인사와 용건만. \"~!\", \"^^\" 같은 표현도 쓰지 않는다.",
+      "공감 표현은 넣지 않고 말끝만 부드럽게. \"^^\" 같은 이모티콘은 쓰지 않는다.",
+      "기준 단계. [기준 예시]와 같은 온도로 쓴다. 공감은 상대가 걱정·속상함을 드러냈을 때만 짧게 한 마디. 끝은 \"~!\", \"^^\"처럼 가볍게 마무리해도 좋다.",
+      "기준보다 조금 더 다정하게. 필요하면 공감 한두 마디, 아이를 챙기는 말 한 마디를 더해도 된다.",
+      "아주 다정하게. 공감과 따뜻한 말을 충분히 넣고 \"^^\", \"😊\" 같은 이모티콘도 한두 개 쓴다. 그래도 같은 말 반복은 하지 않는다." ]},
+  { key:"len", name:"길이", def:3, levels:[
+    "딱 한 줄",
+    "2문장",
+    "기준 (3문장 정도)",
+    "4~5문장",
+    "내용이 다 담길 때까지" ],
+    rule:[
+      "인사까지 포함해 딱 한 문장. 줄바꿈 없이 한 줄로 끝낸다.",
+      "인사 포함 딱 2문장.",
+      "기준 단계. [기준 예시]처럼 인사 포함 3문장 정도.",
+      "인사 포함 4~5문장.",
+      "문장 수 제한 없음. 교사가 메모에 쓴 요소를 하나도 빠짐없이 모두 담을 때까지 필요한 만큼 쓴다. 단, 메모에 없는 내용을 지어내서 늘리지는 않는다. 길어지면 문단을 나눈다." ]}
+];
+const slVal = {};
+try{ Object.assign(slVal, JSON.parse(localStorage.getItem("tm_sl3") || "{}")); }catch(e){}
+function badge(){ $("toneBadge").textContent = `${FORMAL[+getFormal()].name} · 공감 ${slVal.warm} · 길이 ${slVal.len}`; }
+SL.forEach(s => {
+  if(!(slVal[s.key] >= 1 && slVal[s.key] <= 5)) slVal[s.key] = s.def;
+  const el = document.createElement("div");
+  el.innerHTML = `<div class="sl-top"><span>${s.name}</span><span class="lv"></span></div>
+    <input type="range" min="1" max="5" step="1" value="${slVal[s.key]}" aria-label="${s.name}">
+    <div class="ticks">${[1,2,3,4,5].map(n=>`<span>${n}</span>`).join("")}</div>
+    <div class="sl-desc"></div>`;
+  const r = el.querySelector("input");
+  const paint = () => {
+    const v = +r.value; slVal[s.key] = v;
+    r.style.setProperty("--p", ((v-1)/4*100) + "%");
+    el.querySelector(".lv").textContent = v + " / 5";
+    el.querySelector(".sl-desc").textContent = s.levels[v-1];
+    el.querySelectorAll(".ticks span").forEach((t,i)=>t.classList.toggle("on", i===v-1));
+    badge();
+    try{ localStorage.setItem("tm_sl3",JSON.stringify(slVal)); }catch(e){}
+  };
+  r.addEventListener("input", paint);
+  $("sliders").appendChild(el); paint();
+});
+
+applyDefaultFormal();
+
+// 서명 기억
+try{ $("sign").value = localStorage.getItem("tm_sign") || ""; }catch(e){}
+$("sign").addEventListener("change", () => { try{ localStorage.setItem("tm_sign", $("sign").value); }catch(e){} });
+
+// 사용 비밀번호 (서버에 APP_PASSWORD를 설정한 경우에만 필요)
+function getPw(){ try{ return localStorage.getItem("tm_pw") || ""; }catch(e){ return ""; } }
+$("pwSave").onclick = () => {
+  try{ localStorage.setItem("tm_pw", $("pw").value.trim()); }catch(e){}
+  $("pwWrap").style.display = "none"; showErr(""); run(false);
+};
+
+function showErr(m){ const el=$("err"); el.textContent=m; el.style.display=m?"block":"none"; }
+
+// "김유진" → "유진이", "민서" → "민서"
+function callName(n){
+  n = n.replace(/\s/g, "");
+  if(!n) return "";
+  if(n.length === 3 && /^[가-힣]+$/.test(n)) n = n.slice(1);
+  const c = n.charCodeAt(n.length - 1);
+  if(c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0) return n + "이";
+  return n;
+}
+
+function buildPrompt(variant){
+  const L = k => SL.find(s => s.key === k).rule[slVal[k]-1];
+  slVal.formal = +getFormal();
+  const kidTo = (getTo() === "학생" || getTo() === "반 전체 학생");
+  const formalRule = slVal.formal === 1
+    ? (kidTo ? '다정한 반말(예: "~하자", "~했니?", "~해 줘").' : "상대가 어른이므로 반말은 쓰지 않고 아주 편한 해요체로 쓴다.")
+    : FORMAL[slVal.formal].rule;
+  const to = getTo();
+  const call = callName($("student").value.trim());
+  let addr;
+  if(to === "어머니" || to === "아버지"){
+    addr = call
+      ? `처음 부를 때만 "${call} ${to}"라고 부른다(예: "${call} ${to}, 안녕하세요."). 그 뒤로는 호칭을 반복하지 말고, 학생은 "아이" 또는 "${call}"로 가리킨다. "학부모님", "어머님/아버님"은 쓰지 않는다.`
+      : `처음 부를 때만 "${to}"라고 부르고, 그 뒤로는 호칭을 반복하지 않는다. 학생은 "아이"로 가리킨다. "학부모님"은 쓰지 않는다.`;
+  } else if(to === "학생"){
+    const voc = call ? (call.endsWith("이") && call !== $("student").value.trim().slice(-call.length) ? call.slice(0,-1) + "아" : call + "야") : "";
+    addr = `학생에게 보내는 메시지. ${voc ? `처음에 "${voc}"라고 이름을 부르고, ` : ""}${slVal.formal === 1 ? '선생님이 학생에게 쓰는 다정한 반말(예: "~하자", "~했니?", "~해 줘").' : "선생님이 학생에게 쓰는 친근한 존댓말(해요체)."}`;
+  } else if(to === "반 전체 학생"){
+    addr = slVal.formal === 1
+      ? `반 학생 전체에게 보내는 공지. "얘들아"로 부르고 다정한 반말(예: "~하자", "~챙겨 와").`
+      : `반 학생 전체에게 보내는 공지. "여러분"으로 부르고 친근한 해요체.`;
+  } else {
+    addr = `동료 선생님께 보내는 메시지. "선생님"으로 부르고 예의 바르되 편한 동료 말투.`;
+  }
+  return `교사가 대충 쓴 메모를 실제로 보낼 메시지로 다듬어라. 보내는 사람은 중학교의 젊은 여자 선생님이다. 하이클래스나 문자로 실제 선생님이 직접 쓴 것처럼 자연스럽고 담백해야 한다. AI가 쓴 티가 나면 실패다.
+
+[가장 중요한 것]
+- 짧고 담백하게. 같은 말을 두 번 하지 않는다. 감사·공감은 각각 최대 한 번.
+- 오버하지 않는다. 다음 같은 상투적인 표현은 쓰지 않는다: "진심으로", "충분히 이해합니다", "마음이 무거우셨을 텐데", "소중한", "늘 감사드립니다", "언제든 편하게 연락 주세요", "함께 고민하겠습니다", "~하시느라 고생 많으셨죠".
+- 교사가 쓴 내용만 전한다. 교사가 쓰지 않은 날짜, 시간, 약속, 사실, 다짐, 추가 안내는 절대 지어내지 않는다.
+- 상대의 연락을 받았다는 뜻을 전할 때는 "알겠어요/알겠습니다" 대신 "확인했습니다"를 쓴다.
+- 받은 메시지 내용을 되풀이하거나 요약해서 다시 말하지 않는다. (나쁜 예: "유진이가 열이 나서 오늘 못 온다는 연락 확인했습니다.") 그냥 "확인했습니다."라고만 한다.
+- 공감은 꼭 필요한 상황(상대가 걱정·속상함을 드러냈을 때)에만, 본론 앞에 자연스럽게. 확인·안내만 하면 되는 메시지에는 억지로 넣지 않는다.
+- 끝은 "~!", "^^", "~" 같은 선생님들이 실제로 쓰는 가벼운 표현으로 부드럽게 마무리해도 좋다(말끝이 ~습니다일 때는 제외).
+- 사과는 교사가 메모에 "죄송/미안" 같은 말을 직접 쓴 경우에만 한 번 한다. 메모에 없으면 절대 먼저 사과하지 않는다.
+- 줄임말(ㅇㅇ, ㅈㅅ, ㄱㅊ 등)은 뜻을 살려 자연스러운 문장으로 바꾼다. 교사의 반말 메모는 [톤]의 말끝 규칙에 맞게 바꾼다.
+- 아래 예시들은 느낌을 보여 주는 참고일 뿐이다. 예시 문장을 그대로 베끼지 말고, 같은 느낌으로 표현·어순·마무리 인사를 매번 조금씩 다르게 쓴다. (학부모에게 예: "오늘은 푹 쉬게 해 주세요~", "얼른 나았으면 좋겠네요~", "내일 건강한 모습으로 만나길 바랄게요!")
+- 누구에게 하는 말인지 지킨다. 받는 사람이 학부모면 모든 문장은 학부모에게 하는 말이어야 한다. 아이에게 직접 하는 말("몸 잘 챙기고 웃으면서 봐요", "힘내!")을 학부모 메시지에 넣지 않는다. 아이 이야기는 3인칭으로 한다(예: "아이가 푹 쉬면 좋겠어요", "푹 쉬게 해 주세요").
+- 학부모 메시지에서 "내일 봐요/만나요"처럼 학부모와 교사가 만나는 것처럼 들리는 말은 쓰지 않는다. 내일 보는 사람은 교사와 아이다. "내일 학교에서 볼게요", "내일 보도록 할게요", "내일 건강하게 만나길 바랄게요"처럼 교사가 아이를 본다는 뜻으로 쓴다.
+- "아이 푹 쉬고"처럼 조사를 빼먹은 어색한 문장을 쓰지 않는다. "아이가 푹 쉬고", "오늘은 푹 쉬게 해 주세요"처럼 주어와 조사를 자연스럽게 쓴다.
+- 나쁜 예: "어머니, 안녕하세요. 확인했습니다~ 아이 푹 쉬고 내일 봐요!" (조사 빠짐 + 어머니와 내일 만나는 것처럼 들림)
+  좋은 예: "어머니, 안녕하세요. 확인했습니다~ 오늘은 푹 쉬게 해 주시고, 내일 학교에서 볼게요!"
+- 학부모에게 무언가 부탁할 때는 시키는 느낌이 나면 안 된다. "~해 주시면 좋겠어요/좋겠습니다", "~해 주시기 바랍니다", "~하도록 해 주세요"는 쓰지 않는다. 대신 선생님과 같은 편에서 함께하자는 느낌으로 "함께 챙겨 주세요", "가정에서도 함께 이야기 나눠 주세요", "같이 살펴봐 주세요"처럼 쓴다. (단, 결석 때 "푹 쉬게 해 주세요"처럼 아이를 걱정하는 말은 괜찮다.)
+- 실제 선생님들의 문자는 짧다. 출결 연락에는 "네, 확인했습니다~", "알려주셔서 감사합니다" 정도로 짧게 답하는 경우가 많다. 문장마다 수식어를 붙이지 않는다.
+- 상황별 실제 말투 참고:
+  · 결석/지각: 확인 → (필요하면) 아이 회복 바라는 한 마디 → 내일 보자는 마무리. 예: "네, 확인했습니다~ 오늘은 푹 쉬게 해 주세요!"
+  · 생활지도: 있었던 일을 사실대로 짧게 → 가정에서 함께해 달라는 부탁. 아이를 탓하거나 단정하는 표현(문제아, 항상, 매번)은 쓰지 않는다. 예: "오늘 수업 시간에 휴대폰 사용으로 두 번 지도했어요. 가정에서도 함께 이야기 나눠 주세요~"
+  · 상담/민원: 연락 주셔서 감사하다는 말(한 번) → 교사가 메모에 쓴 대응만. 변명하거나 길게 설명하지 않는다.
+  · 안내: 핵심 정보(무엇을, 언제까지)만 또렷하게.
+- 메시지 본문만 출력한다. 제목, 설명, 따옴표, 마크다운 없이.
+
+[호칭]
+${addr}
+${$("sign").value.trim() ? `- 보내는 사람을 밝힐 때는 "${$("sign").value.trim()}"로 짧게. 길이가 한 줄이면 생략해도 된다.` : "- 보내는 사람 소개는 넣지 않는다."}
+
+[톤]
+- 길이: ${L("len")} (이 길이를 반드시 지킨다)
+- 공감: ${L("warm")}
+- 말끝: ${formalRule}
+
+[기준 예시 — 교사가 직접 쓴 것. 공감 3·길이 3·말끝 섞어서일 때 이 정도 느낌. 다른 단계는 여기서 더하거나 뺀다]
+받은 메시지: "유진이가 아침에 열이 나서 오늘 못 갈 것 같아요" / 메모: "ㅇㅋ 푹 쉬라고"
+→ 유진이 어머니, 안녕하세요. 확인했습니다. 푹 쉬고 내일 보도록 할게요~!^^
+
+${getKind().startsWith("결석") && ABS_GUIDE[getAbs()] ? "[결석 종류]\n" + ABS_GUIDE[getAbs()] + " 메모에 추가 내용이 있으면 함께 넣는다.\n\n" : ""}[다른 참고 예]
+메모: "별일없음 친구랑 좀 다툰듯 내일 얘기해볼게요"
+→ 지호 어머니, 안녕하세요. 학교에서 큰일은 없었고, 친구와 조금 다툰 것 같아요. 내일 아이와 따로 이야기해 볼게요~
+메모: "내일 체육복 챙겨오세요"
+→ 여러분, 내일 체육복 꼭 챙겨 오세요!
+${variant ? "\n[다시 쓰기]\n이전 버전과 표현을 다르게 써라. 길이·톤 규칙은 그대로. 이전 버전:\n" + lastText + "\n" : ""}
+[정보]
+받는 사람: ${to}
+상황: ${getKind()}
+학생 이름: ${call || "(없음)"}
+받은 메시지: ${$("recv").value.trim() || "(없음)"}
+교사가 하고 싶은 말(대충 씀): ${$("draft").value.trim()}`;
+}
+
+async function run(variant){
+  if(busy) return;
+  showErr("");
+  if(!$("draft").value.trim()){ showErr("하고 싶은 말을 한 줄이라도 적어 주세요."); $("draft").focus(); return; }
+  busy = true; setBtns();
+  const r = $("result"); r.classList.remove("empty");
+  if(window.innerWidth <= 820) document.querySelector(".out").scrollIntoView({behavior:"smooth", block:"start"}); r.textContent = "좋은 말투로 다듬는 중…";
+  $("meta").textContent = `${getTo()} · ${getKind()}`;
+  ctrl = new AbortController();
+  try{
+    const resp = await fetch("/api/convert", {
+      method: "POST", signal: ctrl.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: buildPrompt(variant), password: getPw() })
+    });
+    const data = await resp.json().catch(() => ({}));
+    if(!resp.ok){ const err = new Error(data.error || "fail"); err.status = resp.status; throw err; }
+    lastText = (data.text || "").trim();
+    r.textContent = lastText;
+  }catch(e){
+    if(e && e.status === 401){ $("pwWrap").style.display = ""; $("pw").focus(); showErr("사용 비밀번호를 입력해 주세요."); }
+    else if(e && e.status === 429) showErr("요청이 많아요. 잠시 뒤에 다시 눌러 주세요.");
+    else showErr("변환에 실패했어요. 다시 한 번 눌러 주세요.");
+    if(!lastText){ r.classList.add("empty"); r.innerHTML = "하고 싶은 말을 대충 써 넣고<br>버튼을 눌러 보세요"; }
+    else r.textContent = lastText;
+  }finally{ busy = false; setBtns(); }
+}
+
+function setBtns(){
+  $("go").disabled = busy;
+  $("go").querySelector("span").textContent = busy ? "바꾸는 중" : "바꾸기";
+  $("copy").disabled = busy || !lastText;
+  $("again").disabled = busy || !lastText;
+}
+
+function toast(m){ const t=$("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1600); }
+
+async function copyText(){
+  const text = $("result").textContent.trim(); if(!text) return;
+  try{ await navigator.clipboard.writeText(text); toast("복사됐어요! 붙여넣기만 하면 돼요"); return; }catch(e){}
+  try{
+    const ta = document.createElement("textarea"); ta.value = text; ta.setAttribute("readonly","");
+    ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta);
+    ta.select(); ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy"); document.body.removeChild(ta);
+    if(ok){ toast("복사됐어요! 붙여넣기만 하면 돼요"); return; }
+  }catch(e){}
+  // 마지막 수단: 결과 글자 선택해 두기
+  const range = document.createRange(); range.selectNodeContents($("result"));
+  const sel = getSelection(); sel.removeAllRanges(); sel.addRange(range);
+  toast("글자를 선택해 뒀어요. 길게 눌러 복사해 주세요");
+}
+
+$("go").onclick = () => run(false);
+$("again").onclick = () => run(true);
+$("copy").onclick = copyText;
+</script>
+</body>
+</html>
