@@ -81,11 +81,11 @@
       <div class="row2">
         <div>
           <label class="t">보내는 사람 <small>선택</small></label>
-          <input id="sign" placeholder="예: 3학년 3반 담임">
+          <input id="sign" placeholder="예: 담임교사" value="담임교사">
         </div>
         <div>
           <label class="t">학생 이름 <small>선택</small></label>
-          <input id="student" placeholder="예: 민준">
+          <input id="student" placeholder="예: 승연">
         </div>
       </div>
 
@@ -121,7 +121,7 @@
         <button class="tone" data-v="4"><b>~습니다</b><small>격식</small></button>
       </div>
 
-      <label class="t">톤 <small>바를 드래그해서 정도를 골라요</small></label>
+      <label class="t">톤 · 길이 <small>바를 드래그해서 정도를 골라요</small></label>
       <div class="sliders" id="sliders"></div>
 
       <label class="t">받은 메시지 <small>있으면 붙여넣기</small></label>
@@ -183,14 +183,26 @@ const ABS_GUIDE = {
   "질병결석": `질병결석이다. 교사가 평소 보내는 느낌의 예: "확인했습니다~ 병원 꼭 다녀오게 해주세요~ 푹 쉬고 내일 보겠습니다~" 예 문장을 그대로 쓰지 말고, 같은 내용(확인, 병원 다녀오게 해 달라는 부탁, 푹 쉬고 내일 보자)과 같은 온도로 표현과 어순을 매번 다르게 바꿔 쓴다.`,
   "생리결석": `생리결석이다. 교사가 평소 보내는 느낌의 예: "네, 확인했습니다~ 서류는 내일 드릴게요. 푹 쉬고 내일 보겠습니다~!" 예 문장을 그대로 쓰지 말고, 같은 내용(확인, 서류는 내일 준다, 푹 쉬고 내일 보자)과 같은 온도로 표현과 어순을 매번 다르게 바꿔 쓴다. 생리라는 단어는 다시 언급하지 않는다.`
 };
-// 받는 사람에 따라 말끝 기본값 자동 설정
-const DEFAULT_FORMAL = { "어머니":"3", "아버지":"3", "동료 선생님":"3", "학생":"2", "반 전체 학생":"2" };
-function applyDefaultFormal(){
-  const v = DEFAULT_FORMAL[getTo()]; if(!v) return;
-  $("formal").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
+// 받는 사람 + 상황에 따라 말끝·톤·길이 자동 설정  [말끝, 톤, 길이]
+const PRESET = {
+  "어머니":       { "결석":[3,3,2], "생활":[3,3,3], "상담":[3,4,4], "안내":[3,3,2] },
+  "아버지":       { "결석":[3,3,2], "생활":[3,3,3], "상담":[3,4,4], "안내":[3,3,2] },
+  "학생":         { "결석":[2,4,2], "생활":[2,3,3], "상담":[2,4,3], "안내":[2,3,2] },
+  "반 전체 학생": { "결석":[2,3,2], "생활":[2,3,3], "상담":[2,3,3], "안내":[2,3,2] },
+  "동료 선생님":  { "결석":[3,2,2], "생활":[3,2,3], "상담":[3,3,3], "안내":[3,2,2] }
+};
+const sliderSetters = {};
+function applyPreset(){
+  const k = getKind();
+  const kk = k.startsWith("결석") ? "결석" : k.startsWith("생활") ? "생활" : k.startsWith("상담") ? "상담" : "안내";
+  const p = (PRESET[getTo()] || {})[kk]; if(!p) return;
+  $("formal").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === String(p[0])));
+  if(sliderSetters.warm) sliderSetters.warm(p[1]);
+  if(sliderSetters.len) sliderSetters.len(p[2]);
   badge();
 }
-$("to").addEventListener("click", e => { if(e.target.closest("button")) applyDefaultFormal(); });
+$("to").addEventListener("click", e => { if(e.target.closest("button")) applyPreset(); });
+$("kind").addEventListener("click", e => { if(e.target.closest("button")) applyPreset(); });
 const FORMAL = {
   1: { name:"반말", rule:"" },
   2: { name:"~해요", rule:"해요체로 쓴다. 과한 존칭(~하셨을까요, ~해 주시면 감사하겠습니다)은 쓰지 않는다." },
@@ -201,12 +213,12 @@ $("formal").addEventListener("click", () => setTimeout(badge));
 
 // 톤 슬라이더 (1~5)
 const SL = [
-  { key:"warm", name:"공감·다정함", def:3, levels:[
-    "용건만, 건조하게",
-    "담백하게, 말끝만 부드럽게",
-    "기준 (선생님 예시 느낌)",
-    "조금 더 다정하게",
-    "아주 다정하게, 이모티콘도" ],
+  { key:"warm", name:"톤", def:3, levels:[
+    "용건만",
+    "담백하게",
+    "선생님 말투 (기준)",
+    "다정하게",
+    "매우 다정 + 이모티콘" ],
     rule:[
       "공감·위로 표현 없이 인사와 용건만. \"~!\", \"^^\" 같은 표현도 쓰지 않는다.",
       "공감 표현은 넣지 않고 말끝만 부드럽게. \"^^\" 같은 이모티콘은 쓰지 않는다.",
@@ -214,21 +226,20 @@ const SL = [
       "기준보다 조금 더 다정하게. 필요하면 공감 한두 마디, 아이를 챙기는 말 한 마디를 더해도 된다.",
       "아주 다정하게. 공감과 따뜻한 말을 충분히 넣고 \"^^\", \"😊\" 같은 이모티콘도 한두 개 쓴다. 그래도 같은 말 반복은 하지 않는다." ]},
   { key:"len", name:"길이", def:3, levels:[
-    "딱 한 줄",
-    "2문장",
-    "기준 (3문장 정도)",
-    "4~5문장",
-    "내용이 다 담길 때까지" ],
+    "한 줄로 압축",
+    "짧게 (덧붙임 없이)",
+    "기본",
+    "여유 있게",
+    "자세히 풀어서" ],
     rule:[
-      "인사까지 포함해 딱 한 문장. 줄바꿈 없이 한 줄로 끝낸다.",
-      "인사 포함 딱 2문장.",
-      "기준 단계. [기준 예시]처럼 인사 포함 3문장 정도.",
-      "인사 포함 4~5문장.",
-      "문장 수 제한 없음. 교사가 메모에 쓴 요소를 하나도 빠짐없이 모두 담을 때까지 필요한 만큼 쓴다. 단, 메모에 없는 내용을 지어내서 늘리지는 않는다. 길어지면 문단을 나눈다." ]}
+      "메모 내용을 한 문장으로 압축한다. 인사도 호칭과 합쳐 짧게. 줄바꿈 없이 한 줄.",
+      "인사 + 메모 내용만. 마무리 인사나 덧붙이는 말은 넣지 않는다.",
+      "기준 단계. 인사 + 메모 내용 + 짧은 마무리 한 마디. [기준 예시] 정도의 분량.",
+      "기본에 공감이나 마무리 말을 한두 마디 더해 조금 여유 있게.",
+      "메모의 각 내용을 하나씩 풀어서 자세히 설명한다. 길어지면 문단을 나눈다." ]}
 ];
 const slVal = {};
-try{ Object.assign(slVal, JSON.parse(localStorage.getItem("tm_sl3") || "{}")); }catch(e){}
-function badge(){ $("toneBadge").textContent = `${FORMAL[+getFormal()].name} · 공감 ${slVal.warm} · 길이 ${slVal.len}`; }
+function badge(){ $("toneBadge").textContent = `${FORMAL[+getFormal()].name} · 톤 ${slVal.warm} · 길이 ${slVal.len}`; }
 SL.forEach(s => {
   if(!(slVal[s.key] >= 1 && slVal[s.key] <= 5)) slVal[s.key] = s.def;
   const el = document.createElement("div");
@@ -244,16 +255,16 @@ SL.forEach(s => {
     el.querySelector(".sl-desc").textContent = s.levels[v-1];
     el.querySelectorAll(".ticks span").forEach((t,i)=>t.classList.toggle("on", i===v-1));
     badge();
-    try{ localStorage.setItem("tm_sl3",JSON.stringify(slVal)); }catch(e){}
   };
   r.addEventListener("input", paint);
+  sliderSetters[s.key] = v => { r.value = v; paint(); };
   $("sliders").appendChild(el); paint();
 });
 
-applyDefaultFormal();
+applyPreset();
 
 // 서명 기억
-try{ $("sign").value = localStorage.getItem("tm_sign") || ""; }catch(e){}
+try{ const sv = localStorage.getItem("tm_sign"); if(sv) $("sign").value = sv; }catch(e){}
 $("sign").addEventListener("change", () => { try{ localStorage.setItem("tm_sign", $("sign").value); }catch(e){} });
 
 // 사용 비밀번호 (서버에 APP_PASSWORD를 설정한 경우에만 필요)
@@ -331,11 +342,11 @@ ${addr}
 ${$("sign").value.trim() ? `- 보내는 사람을 밝힐 때는 "${$("sign").value.trim()}"로 짧게. 길이가 한 줄이면 생략해도 된다.` : "- 보내는 사람 소개는 넣지 않는다."}
 
 [톤]
-- 길이: ${L("len")} (이 길이를 반드시 지킨다)
-- 공감: ${L("warm")}
+- 길이: ${L("len")} (메모에 쓴 내용은 길이와 상관없이 하나도 빠뜨리지 않는다. 길이는 그 외에 덧붙이는 말의 양으로 조절한다. 단, 메모에 없는 내용을 지어내서 늘리지는 않는다.)
+- 톤: ${L("warm")}
 - 말끝: ${formalRule}
 
-[기준 예시 — 교사가 직접 쓴 것. 공감 3·길이 3·말끝 섞어서일 때 이 정도 느낌. 다른 단계는 여기서 더하거나 뺀다]
+[기준 예시 — 교사가 직접 쓴 것. 톤 3·길이 3·말끝 섞어서일 때 이 정도 느낌. 다른 단계는 여기서 더하거나 뺀다]
 받은 메시지: "유진이가 아침에 열이 나서 오늘 못 갈 것 같아요" / 메모: "ㅇㅋ 푹 쉬라고"
 → 유진이 어머니, 안녕하세요. 확인했습니다. 푹 쉬고 내일 보도록 할게요~!^^
 
@@ -362,7 +373,7 @@ async function run(variant){
   if(window.innerWidth <= 820) document.querySelector(".out").scrollIntoView({behavior:"smooth", block:"start"}); r.textContent = "다듬는 중…";
   $("meta").textContent = `${getTo()} · ${getKind()}`;
   ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 40000);
+  const timer = setTimeout(() => ctrl.abort(), 60000);
   try{
     const resp = await fetch("/api/convert", {
       method: "POST", signal: ctrl.signal,

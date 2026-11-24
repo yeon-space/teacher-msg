@@ -28,17 +28,18 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: "입력이 비어 있거나 너무 길어요." });
   }
 
-  const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`;
+  const MAIN = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+  const FAST = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
+  const urlOf = m => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`;
 
   // Gemini 호출 (25초 넘으면 중단). 생각 단계는 짧게(low) 해서 빨리 답하게 함.
-  async function callGemini(withThinking) {
+  async function callGemini(model, withThinking, ms) {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 25000);
+    const t = setTimeout(() => ctrl.abort(), ms);
     const generationConfig = { temperature: 1.0, maxOutputTokens: 2048 };
     if (withThinking) generationConfig.thinkingConfig = { thinkingLevel: "low" };
     try {
-      const r = await fetch(url, {
+      const r = await fetch(urlOf(model), {
         method: "POST", signal: ctrl.signal,
         headers: { "Content-Type": "application/json", "x-goog-api-key": key },
         body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig })
@@ -49,8 +50,20 @@ module.exports = async (req, res) => {
   }
 
   try {
-    let { r, data } = await callGemini(true);
-    if (r.status === 400) ({ r, data } = await callGemini(false)); // 설정이 안 맞으면 기본값으로 재시도
+    // 1) 기본 모델로 18초까지 시도 → 2) 늦거나 실패하면 빠른 모델로 20초까지 재시도
+    let r, data;
+    try {
+      ({ r, data } = await callGemini(MAIN, true, 18000));
+      if (r.status === 400) ({ r, data } = await callGemini(MAIN, false, 18000));
+    } catch (e) {
+      if (!(e && e.name === "AbortError")) throw e;
+      r = null;
+    }
+    if (!r || !r.ok) {
+      if (r) console.error("main model failed", r.status, data && data.error && data.error.message);
+      else console.error("main model timeout");
+      ({ r, data } = await callGemini(FAST, false, 20000));
+    }
     if (!r.ok) {
       const msg = (data && data.error && data.error.message) || "";
       console.error("Gemini error", r.status, msg);
@@ -62,7 +75,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ text });
   } catch (e) {
     console.error(e);
-    if (e && e.name === "AbortError") return res.status(504).json({ error: "AI 응답이 너무 늦어요 (25초 초과)" });
+    if (e && e.name === "AbortError") return res.status(504).json({ error: "AI 응답이 너무 늦어요" });
     return res.status(500).json({ error: "서버 오류: " + (e && e.message || "") });
   }
 };
