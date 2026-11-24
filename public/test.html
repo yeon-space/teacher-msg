@@ -14,6 +14,19 @@
   #run{background:#e8846b;color:#fff}
   #copyAll{background:#2b2622;color:#fff}
   button:disabled{opacity:.5}
+  .wrap{max-width:1400px}
+  .tbl-wrap{overflow-x:auto;border:1px solid #ece4da;border-radius:14px;background:#fff}
+  table{border-collapse:collapse;width:100%;min-width:1100px;font-size:13px}
+  th{background:#f5efe8;text-align:left;padding:10px;font-size:13px;position:sticky;top:0}
+  td{border-top:1px solid #ece4da;padding:10px;vertical-align:top;line-height:1.6}
+  td.n{width:28px;color:#8a7f75;font-weight:700}
+  td.case-in{width:22%;color:#5a5048}
+  td.case-in b{display:block;color:#e8846b;font-size:12px;margin-bottom:4px}
+  td.res{width:30%;white-space:pre-wrap;font-size:14px}
+  td textarea{box-sizing:border-box;width:100%;min-height:110px;border:1px solid #ece4da;border-radius:8px;padding:8px;font:inherit;font-size:13px;resize:vertical;background:#fffdfb}
+  #paste{background:#fff;border:1px solid #2b2622;color:#2b2622}
+  .pastebox{display:none;margin-bottom:14px}
+  .pastebox textarea{box-sizing:border-box;width:100%;min-height:120px;border:1px solid #ece4da;border-radius:10px;padding:10px;font:inherit;font-size:13px}
   .case{background:#fff;border:1px solid #ece4da;border-radius:14px;padding:14px;margin-bottom:10px}
   .head{font-size:13px;color:#8a7f75;margin-bottom:6px}
   .in{font-size:13px;color:#6b6058;margin-bottom:8px;white-space:pre-wrap}
@@ -25,10 +38,15 @@
 <body>
 <div class="wrap">
   <h1>말투 변환기 시험</h1>
-  <p>여러 사례를 실제 변환기로 차례대로 돌려요. 다 끝나면 "전체 복사"를 눌러 Claude에게 붙여 주세요.</p>
+  <p>① 시험 시작 → ② 전체 복사해서 Claude에게 보내기 → ③ Claude 피드백을 붙여 넣기 → ④ 내 피드백 쓰고 다시 전체 복사해서 보내기. 쓴 내용은 이 브라우저에 저장돼요.</p>
   <div class="bar">
     <button id="run">시험 시작</button>
     <button id="copyAll" disabled>전체 복사</button>
+    <button id="paste">Claude 피드백 붙여넣기</button>
+  </div>
+  <div class="pastebox" id="pastebox">
+    <textarea id="pasteText" placeholder="Claude가 준 번호별 피드백(1. … 2. …)을 통째로 붙여 넣으세요"></textarea>
+    <button id="pasteApply" style="background:#e8846b;color:#fff;margin-top:6px">칸에 나눠 넣기</button>
   </div>
   <div id="list"></div>
 </div>
@@ -56,14 +74,23 @@ const results = [];
 const $ = id => document.getElementById(id);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+let fb = { claude:[], mine:[] };
+try{ const saved = JSON.parse(localStorage.getItem("tm_test") || "null"); if(saved){ (saved.results||[]).forEach((r,i)=>results[i]=r); fb = saved.fb || fb; } }catch(e){}
+function save(){ try{ localStorage.setItem("tm_test", JSON.stringify({ results, fb })); }catch(e){} }
+const esc = t => String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
 function render(){
-  $("list").innerHTML = CASES.map((c,i) => {
-    const r = results[i];
-    return `<div class="case"><div class="head">${i+1}. ${TO_LABEL[c.to]} · ${KIND_LABEL[c.kind]}${c.abs?" · "+c.abs:""} · 말끝/톤/길이 ${r&&r.preset||"-"}</div>
-      <div class="in">${c.recv?"받은 메시지: "+c.recv+"\n":""}메모: ${c.draft}</div>
-      <div class="out">${r ? r.text.replace(/</g,"&lt;") : "대기 중"}</div></div>`;
-  }).join("");
+  $("list").innerHTML = `<div class="tbl-wrap"><table>
+    <tr><th>#</th><th>상황 · 입력</th><th>결과</th><th>Claude 피드백</th><th>내 피드백</th></tr>
+    ${CASES.map((c,i) => { const r = results[i]; return `<tr>
+      <td class="n">${i+1}</td>
+      <td class="case-in"><b>${TO_LABEL[c.to]} · ${KIND_LABEL[c.kind]}${c.abs?" · "+c.abs:""}${r&&r.preset?"<br>"+esc(r.preset):""}</b>${c.recv?"받은: "+esc(c.recv)+"<br>":""}메모: ${esc(c.draft)}</td>
+      <td class="res">${r ? esc(r.text) : '<span style="color:#b8ada2">대기 중</span>'}</td>
+      <td><textarea data-k="claude" data-i="${i}">${esc(fb.claude[i])}</textarea></td>
+      <td><textarea data-k="mine" data-i="${i}" placeholder="어색한 점, 이렇게 바꾸고 싶다 등">${esc(fb.mine[i])}</textarea></td>
+    </tr>`; }).join("")}
+  </table></div>`;
 }
+$("list").addEventListener("input", e => { const t = e.target; if(t.dataset.k){ fb[t.dataset.k][+t.dataset.i] = t.value; save(); } });
 render();
 
 async function runOne(doc, c){
@@ -86,19 +113,27 @@ async function runOne(doc, c){
 }
 
 $("run").onclick = async () => {
-  $("run").disabled = true; $("copyAll").disabled = true; results.length = 0; render();
+  $("run").disabled = true; $("copyAll").disabled = true; results.length = 0; fb = { claude:[], mine:[] }; save(); render();
   const doc = $("app").contentDocument;
   for(let i = 0; i < CASES.length; i++){
     $("run").textContent = `진행 중 ${i+1}/${CASES.length}`;
     results[i] = await runOne(doc, CASES[i]);
-    render();
+    save(); render();
     await sleep(800);
   }
   $("run").textContent = "다시 시험"; $("run").disabled = false; $("copyAll").disabled = false;
 };
 
+if(results.length) $("copyAll").disabled = false;
+$("paste").onclick = () => { const b = $("pastebox"); b.style.display = b.style.display === "block" ? "none" : "block"; };
+$("pasteApply").onclick = () => {
+  const txt = $("pasteText").value;
+  const parts = txt.split(/\n(?=\s*\d{1,2}[.)]\s)/);
+  parts.forEach(p => { const m = p.match(/^\s*(\d{1,2})[.)]\s*([\s\S]*)$/); if(m){ const i = +m[1]-1; if(i>=0 && i<CASES.length) fb.claude[i] = m[2].trim(); } });
+  save(); render(); $("pastebox").style.display = "none"; $("pasteText").value = "";
+};
 $("copyAll").onclick = async () => {
-  const txt = CASES.map((c,i) => `${i+1}. ${TO_LABEL[c.to]} · ${KIND_LABEL[c.kind]}${c.abs?" · "+c.abs:""} · ${results[i].preset}\n${c.recv?"받은 메시지: "+c.recv+"\n":""}메모: ${c.draft}\n→ ${results[i].text}`).join("\n\n");
+  const txt = CASES.map((c,i) => { const r = results[i] || {}; return `${i+1}. ${TO_LABEL[c.to]} · ${KIND_LABEL[c.kind]}${c.abs?" · "+c.abs:""} · ${r.preset||""}\n${c.recv?"받은 메시지: "+c.recv+"\n":""}메모: ${c.draft}\n→ ${r.text||"(결과 없음)"}${fb.claude[i]?"\n[Claude] "+fb.claude[i]:""}${fb.mine[i]?"\n[내 피드백] "+fb.mine[i]:""}`; }).join("\n\n");
   try{ await navigator.clipboard.writeText(txt); }
   catch(e){ const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
   $("toast").style.display = "block"; setTimeout(() => $("toast").style.display = "none", 1500);
