@@ -55,18 +55,40 @@
 
 <script>
 const CASES = [
+  // 결석/지각
   { to:"어머니", kind:"결석", abs:"질병결석", name:"승연", recv:"선생님 승연이가 아침부터 열이 나서 오늘 결석할게요", draft:"ㅇㅋ" },
   { to:"어머니", kind:"결석", abs:"생리결석", name:"승연", recv:"승연이 오늘 생리통이 심해서 학교 못 갈 것 같아요", draft:"ㅇㅋ 서류 내일" },
   { to:"아버지", kind:"결석", abs:"", name:"승연", recv:"아이가 병원 들렀다가 2교시쯤 갈 것 같습니다", draft:"ㅇㅋ 진료확인서 챙겨오라고" },
+  { to:"어머니", kind:"결석", abs:"질병결석", name:"승연", recv:"장염이라 이틀 정도 쉬어야 할 것 같아요", draft:"ㅇㅋ 수행평가 있는데 나중에 따로 보게 해줄게요" },
+  { to:"어머니", kind:"결석", abs:"", name:"승연", recv:"늦잠 자서 지금 출발했어요 죄송해요", draft:"ㅇㅋ 조심히 오라고" },
+  { to:"아버지", kind:"결석", abs:"", name:"승연", recv:"가족 행사로 금요일에 체험학습 신청하려고 합니다", draft:"신청서 3일전까지 내야함 양식 하이클래스에 있음" },
+  { to:"학생", kind:"결석", abs:"질병결석", name:"승연", recv:"쌤 저 오늘 아파서 못가요ㅠ", draft:"ㅇㅋ 푹쉬어 병원 꼭 가" },
+  { to:"학생", kind:"결석", abs:"", name:"승연", recv:"쌤 저 버스 놓쳐서 10분 늦을 것 같아요", draft:"ㅇㅋ 뛰지말고 조심히" },
+  // 생활지도
   { to:"어머니", kind:"생활", name:"승연", recv:"", draft:"수업시간에 폰 계속 함 오늘 두번 걸림 집에서도 얘기좀" },
   { to:"아버지", kind:"생활", name:"승연", recv:"", draft:"쉬는시간에 친구랑 몸싸움 있었음 크게 다친 애는 없고 둘다 사과함" },
+  { to:"어머니", kind:"생활", name:"승연", recv:"", draft:"요즘 지각 잦음 이번달 4번 아침에 좀 깨워주세요" },
+  { to:"어머니", kind:"생활", name:"승연", recv:"", draft:"친구한테 욕한거 확인됨 사과는 함 학폭까지는 아님 집에서 지도부탁" },
+  { to:"아버지", kind:"생활", name:"승연", recv:"", draft:"숙제 3주째 안냄 상담 한번 하고싶음 다음주 화요일 4시 가능?" },
+  { to:"학생", kind:"생활", name:"승연", recv:"", draft:"복도에서 뛰다가 친구랑 부딪힘 다음부터 조심" },
+  { to:"반 전체 학생", kind:"생활", name:"", recv:"", draft:"교실 쓰레기 너무 많음 청소 제대로 하자" },
+  // 상담/민원
   { to:"어머니", kind:"상담", name:"승연", recv:"선생님 승연이가 반에서 따돌림 당하는 것 같다는데 알고 계셨나요? 너무 속상하네요", draft:"몰랐음 내일 애들 상담해보고 연락드림" },
   { to:"어머니", kind:"상담", name:"승연", recv:"수행평가 점수가 왜 이렇게 낮은지 궁금합니다", draft:"채점기준 미리 안내했음 보고서 분량 부족했음 다음주 상담 가능" },
+  { to:"어머니", kind:"상담", name:"승연", recv:"왜 우리 아이만 혼내셨나요? 아이가 너무 억울해합니다", draft:"같이 떠든 애들 다 지도했음 승연이만 그런거 아님 오해 풀고싶음 통화 가능" },
+  { to:"아버지", kind:"상담", name:"승연", recv:"자리 배치 바꿔주실 수 있나요? 옆 친구랑 사이가 안 좋다고 해서요", draft:"다음주 자리 바꿀 예정 그때 고려해볼게요" },
+  { to:"어머니", kind:"상담", name:"승연", recv:"선생님 밤늦게 죄송해요 내일 준비물이 뭔가요?", draft:"체육복이랑 물 다음부턴 알림장 확인 부탁" },
+  { to:"어머니", kind:"상담", name:"승연", recv:"아이가 요즘 학교 가기 싫다고 하는데 학교에서 무슨 일 있나요?", draft:"특별한건 못봤음 내일 따로 얘기해볼게요 걱정되시면 상담 가능" },
+  { to:"학생", kind:"상담", name:"승연", recv:"쌤 저 요즘 친구들이랑 좀 힘들어요", draft:"점심시간에 상담실로 와 얘기하자" },
+  // 안내
   { to:"어머니", kind:"안내", name:"승연", recv:"", draft:"수행평가 보고서 미제출 금요일까지 안내면 0점" },
-  { to:"학생", kind:"결석", abs:"질병결석", name:"승연", recv:"쌤 저 오늘 아파서 못가요ㅠ", draft:"ㅇㅋ 푹쉬어 병원 꼭 가" },
   { to:"학생", kind:"안내", name:"승연", recv:"", draft:"오늘 발표 잘했음 굿" },
   { to:"반 전체 학생", kind:"안내", name:"", recv:"", draft:"금욜 현장체험학습 8시반 정문 집합 늦지마 도시락x" },
-  { to:"동료 선생님", kind:"안내", name:"", recv:"선생님 이번주 목요일 3교시 보강 들어가 주실 수 있으세요?", draft:"이번주 못들어감 미안 다음엔 내가 해줄게" }
+  { to:"반 전체 학생", kind:"안내", name:"", recv:"", draft:"다음주 월요일부터 중간고사 시간표 하이클래스에 올림 확인" },
+  { to:"어머니", kind:"안내", name:"승연", recv:"", draft:"다음주 학부모 상담주간 신청서 내일까지" },
+  { to:"아버지", kind:"안내", name:"승연", recv:"", draft:"승연이 이번에 봉사상 받음 축하드려요" },
+  { to:"동료 선생님", kind:"안내", name:"", recv:"선생님 이번주 목요일 3교시 보강 들어가 주실 수 있으세요?", draft:"이번주 못들어감 미안 다음엔 내가 해줄게" },
+  { to:"동료 선생님", kind:"안내", name:"", recv:"", draft:"회의자료 메일로 보냄 확인 부탁 수정할거 있으면 말해줘" }
 ];
 const KIND_LABEL = { "결석":"결석/지각", "생활":"생활지도", "상담":"상담/민원", "안내":"안내" };
 const TO_LABEL = { "어머니":"아이 어머니", "아버지":"아이 아버지", "학생":"학생", "반 전체 학생":"반 전체", "동료 선생님":"동료 선생님" };
@@ -94,6 +116,14 @@ $("list").addEventListener("input", e => { const t = e.target; if(t.dataset.k){ 
 render();
 
 async function runOne(doc, c){
+  for(let a = 0; a < 3; a++){
+    const r = await runOnce(doc, c);
+    if(!/요청이 많아요|너무 늦어요/.test(r.text)) return r;
+    await sleep(8000);
+  }
+  return await runOnce(doc, c);
+}
+async function runOnce(doc, c){
   const click = (box, pred) => { const b = [...doc.querySelectorAll(`#${box} button`)].find(pred); if(b) b.click(); };
   click("kind", b => b.dataset.v.startsWith(c.kind));
   click("to", b => b.dataset.v === c.to);
@@ -119,7 +149,7 @@ $("run").onclick = async () => {
     $("run").textContent = `진행 중 ${i+1}/${CASES.length}`;
     results[i] = await runOne(doc, CASES[i]);
     save(); render();
-    await sleep(800);
+    await sleep(300);
   }
   $("run").textContent = "다시 시험"; $("run").disabled = false; $("copyAll").disabled = false;
 };
