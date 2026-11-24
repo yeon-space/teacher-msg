@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>말투 변환기 시험</title>
+<style>
+  body{margin:0;background:#fbf7f2;color:#2b2622;font-family:system-ui,"Noto Sans KR",sans-serif}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 16px 60px}
+  h1{font-size:22px;margin:0 0 6px}
+  p{color:#8a7f75;font-size:14px;margin:0 0 16px}
+  .bar{display:flex;gap:8px;margin-bottom:16px}
+  button{border:0;border-radius:12px;padding:12px 16px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+  #run{background:#e8846b;color:#fff}
+  #copyAll{background:#2b2622;color:#fff}
+  button:disabled{opacity:.5}
+  .case{background:#fff;border:1px solid #ece4da;border-radius:14px;padding:14px;margin-bottom:10px}
+  .head{font-size:13px;color:#8a7f75;margin-bottom:6px}
+  .in{font-size:13px;color:#6b6058;margin-bottom:8px;white-space:pre-wrap}
+  .out{white-space:pre-wrap;line-height:1.7;font-size:15px;background:#fffdfb;border:1px dashed #ece4da;border-radius:10px;padding:10px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#2b2622;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;display:none}
+  iframe{position:absolute;width:420px;height:900px;left:-9999px;top:0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>말투 변환기 시험</h1>
+  <p>여러 사례를 실제 변환기로 차례대로 돌려요. 다 끝나면 "전체 복사"를 눌러 Claude에게 붙여 주세요.</p>
+  <div class="bar">
+    <button id="run">시험 시작</button>
+    <button id="copyAll" disabled>전체 복사</button>
+  </div>
+  <div id="list"></div>
+</div>
+<div class="toast" id="toast">복사됐어요</div>
+<iframe id="app" src="/"></iframe>
+
+<script>
+const CASES = [
+  { to:"어머니", kind:"결석", abs:"질병결석", name:"승연", recv:"선생님 승연이가 아침부터 열이 나서 오늘 결석할게요", draft:"ㅇㅋ" },
+  { to:"어머니", kind:"결석", abs:"생리결석", name:"승연", recv:"승연이 오늘 생리통이 심해서 학교 못 갈 것 같아요", draft:"ㅇㅋ 서류 내일" },
+  { to:"아버지", kind:"결석", abs:"", name:"승연", recv:"아이가 병원 들렀다가 2교시쯤 갈 것 같습니다", draft:"ㅇㅋ 진료확인서 챙겨오라고" },
+  { to:"어머니", kind:"생활", name:"승연", recv:"", draft:"수업시간에 폰 계속 함 오늘 두번 걸림 집에서도 얘기좀" },
+  { to:"아버지", kind:"생활", name:"승연", recv:"", draft:"쉬는시간에 친구랑 몸싸움 있었음 크게 다친 애는 없고 둘다 사과함" },
+  { to:"어머니", kind:"상담", name:"승연", recv:"선생님 승연이가 반에서 따돌림 당하는 것 같다는데 알고 계셨나요? 너무 속상하네요", draft:"몰랐음 내일 애들 상담해보고 연락드림" },
+  { to:"어머니", kind:"상담", name:"승연", recv:"수행평가 점수가 왜 이렇게 낮은지 궁금합니다", draft:"채점기준 미리 안내했음 보고서 분량 부족했음 다음주 상담 가능" },
+  { to:"어머니", kind:"안내", name:"승연", recv:"", draft:"수행평가 보고서 미제출 금요일까지 안내면 0점" },
+  { to:"학생", kind:"결석", abs:"질병결석", name:"승연", recv:"쌤 저 오늘 아파서 못가요ㅠ", draft:"ㅇㅋ 푹쉬어 병원 꼭 가" },
+  { to:"학생", kind:"안내", name:"승연", recv:"", draft:"오늘 발표 잘했음 굿" },
+  { to:"반 전체 학생", kind:"안내", name:"", recv:"", draft:"금욜 현장체험학습 8시반 정문 집합 늦지마 도시락x" },
+  { to:"동료 선생님", kind:"안내", name:"", recv:"선생님 이번주 목요일 3교시 보강 들어가 주실 수 있으세요?", draft:"이번주 못들어감 미안 다음엔 내가 해줄게" }
+];
+const KIND_LABEL = { "결석":"결석/지각", "생활":"생활지도", "상담":"상담/민원", "안내":"안내" };
+const TO_LABEL = { "어머니":"아이 어머니", "아버지":"아이 아버지", "학생":"학생", "반 전체 학생":"반 전체", "동료 선생님":"동료 선생님" };
+const results = [];
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+function render(){
+  $("list").innerHTML = CASES.map((c,i) => {
+    const r = results[i];
+    return `<div class="case"><div class="head">${i+1}. ${TO_LABEL[c.to]} · ${KIND_LABEL[c.kind]}${c.abs?" · "+c.abs:""} · 말끝/톤/길이 ${r&&r.preset||"-"}</div>
+      <div class="in">${c.recv?"받은 메시지: "+c.recv+"\n":""}메모: ${c.draft}</div>
+      <div class="out">${r ? r.text.replace(/</g,"&lt;") : "대기 중"}</div></div>`;
+  }).join("");
+}
+render();
+
+async function runOne(doc, c){
+  const click = (box, pred) => { const b = [...doc.querySelectorAll(`#${box} button`)].find(pred); if(b) b.click(); };
+  click("kind", b => b.dataset.v.startsWith(c.kind));
+  click("to", b => b.dataset.v === c.to);
+  if(c.kind === "결석") click("abs", b => b.dataset.v === (c.abs || ""));
+  const set = (id, v) => { const el = doc.getElementById(id); el.value = v; el.dispatchEvent(new Event("input", {bubbles:true})); };
+  set("student", c.name || ""); set("recv", c.recv || ""); set("draft", c.draft);
+  await sleep(100);
+  const preset = doc.getElementById("toneBadge").textContent;
+  doc.getElementById("err").textContent = "";
+  doc.getElementById("go").click();
+  await sleep(300);
+  const t0 = Date.now();
+  while(doc.getElementById("go").disabled && Date.now() - t0 < 70000) await sleep(400);
+  const err = doc.getElementById("err").textContent.trim();
+  const text = err ? "[오류] " + err : doc.getElementById("result").textContent.trim();
+  return { text, preset };
+}
+
+$("run").onclick = async () => {
+  $("run").disabled = true; $("copyAll").disabled = true; results.length = 0; render();
+  const doc = $("app").contentDocument;
+  for(let i = 0; i < CASES.length; i++){
+    $("run").textContent = `진행 중 ${i+1}/${CASES.length}`;
+    results[i] = await runOne(doc, CASES[i]);
+    render();
+    await sleep(800);
+  }
+  $("run").textContent = "다시 시험"; $("run").disabled = false; $("copyAll").disabled = false;
+};
+
+$("copyAll").onclick = async () => {
+  const txt = CASES.map((c,i) => `${i+1}. ${TO_LABEL[c.to]} · ${KIND_LABEL[c.kind]}${c.abs?" · "+c.abs:""} · ${results[i].preset}\n${c.recv?"받은 메시지: "+c.recv+"\n":""}메모: ${c.draft}\n→ ${results[i].text}`).join("\n\n");
+  try{ await navigator.clipboard.writeText(txt); }
+  catch(e){ const ta=document.createElement("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select(); document.execCommand("copy"); ta.remove(); }
+  $("toast").style.display = "block"; setTimeout(() => $("toast").style.display = "none", 1500);
+};
+</script>
+</body>
+</html>
