@@ -359,7 +359,7 @@ async function run(variant){
   if(!$("draft").value.trim()){ showErr("하고 싶은 말을 한 줄이라도 적어 주세요."); $("draft").focus(); return; }
   busy = true; setBtns();
   const r = $("result"); r.classList.remove("empty");
-  if(window.innerWidth <= 820) document.querySelector(".out").scrollIntoView({behavior:"smooth", block:"start"}); r.textContent = "좋은 말투로 다듬는 중…";
+  if(window.innerWidth <= 820) document.querySelector(".out").scrollIntoView({behavior:"smooth", block:"start"}); r.textContent = "다듬는 중…";
   $("meta").textContent = `${getTo()} · ${getKind()}`;
   ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 40000);
