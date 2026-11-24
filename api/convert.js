@@ -28,8 +28,9 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: "입력이 비어 있거나 너무 길어요." });
   }
 
-  const MAIN = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-  const FAST = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.5-flash-lite";
+  // 빠른 모델을 먼저 쓰고, 안 되면 더 똑똑한(대신 느린) 모델로 재시도
+  const MAIN = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
+  const BACKUP = process.env.GEMINI_FALLBACK_MODEL || "gemini-3.8-flash";
   const urlOf = m => `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`;
 
   // Gemini 호출 (25초 넘으면 중단). 생각 단계는 짧게(low) 해서 빨리 답하게 함.
@@ -50,11 +51,10 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // 1) 기본 모델로 18초까지 시도 → 2) 늦거나 실패하면 빠른 모델로 20초까지 재시도
+    // 1) 빠른 모델로 12초까지 시도 → 2) 늦거나 실패하면 예비 모델로 25초까지 재시도
     let r, data;
     try {
-      ({ r, data } = await callGemini(MAIN, true, 18000));
-      if (r.status === 400) ({ r, data } = await callGemini(MAIN, false, 18000));
+      ({ r, data } = await callGemini(MAIN, false, 12000));
     } catch (e) {
       if (!(e && e.name === "AbortError")) throw e;
       r = null;
@@ -62,7 +62,8 @@ module.exports = async (req, res) => {
     if (!r || !r.ok) {
       if (r) console.error("main model failed", r.status, data && data.error && data.error.message);
       else console.error("main model timeout");
-      ({ r, data } = await callGemini(FAST, false, 20000));
+      ({ r, data } = await callGemini(BACKUP, true, 25000));
+      if (r.status === 400) ({ r, data } = await callGemini(BACKUP, false, 25000));
     }
     if (!r.ok) {
       const msg = (data && data.error && data.error.message) || "";
